@@ -15,14 +15,18 @@ builder.Services.AddOpenTelemetry()
             .AddSource(DiagnosticsConfig.ActivitySource.Name)
             .ConfigureResource(resource => resource.AddService(DiagnosticsConfig.ServiceName))
             .AddAspNetCoreInstrumentation()
-            .AddConsoleExporter()
-            .AddOtlpExporter())
+            // Add Jaeger exporter for tracing:
+            .AddJaegerExporter(jaegerOptions =>
+            {
+                jaegerOptions.AgentHost = "localhost";  // Adjust if Jaeger is running elsewhere.
+                jaegerOptions.AgentPort = 6831;         // Default Jaeger agent port.
+            }))
     .WithMetrics(metricsProviderBuilder => metricsProviderBuilder
             .AddMeter(DiagnosticsConfig.Meter.Name)
             .ConfigureResource(resource => resource.AddService(DiagnosticsConfig.ServiceName))
             .AddAspNetCoreInstrumentation()
-            .AddConsoleExporter()
-            .AddOtlpExporter());
+            // Use console exporter for metrics for now:
+            .AddConsoleExporter());
 
 var app = builder.Build();
 
