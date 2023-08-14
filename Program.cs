@@ -15,20 +15,32 @@ builder.Services.AddOpenTelemetry()
             .AddSource(DiagnosticsConfig.ActivitySource.Name)
             .ConfigureResource(resource => resource.AddService(DiagnosticsConfig.ServiceName))
             .AddAspNetCoreInstrumentation()
-            // Add Jaeger exporter for tracing:
+            //.AddConsoleExporter()
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = new System.Uri("http://localhost:4316");
+            })
             .AddJaegerExporter(jaegerOptions =>
             {
-                jaegerOptions.AgentHost = "localhost";  // Adjust if Jaeger is running elsewhere.
-                jaegerOptions.AgentPort = 6831;         // Default Jaeger agent port.
-            }))
+                jaegerOptions.AgentHost = "localhost";
+                jaegerOptions.AgentPort = 6831;
+            }))            
     .WithMetrics(metricsProviderBuilder => metricsProviderBuilder
             .AddMeter(DiagnosticsConfig.Meter.Name)
             .ConfigureResource(resource => resource.AddService(DiagnosticsConfig.ServiceName))
             .AddAspNetCoreInstrumentation()
-            // Use console exporter for metrics for now:
-            .AddConsoleExporter());
+            //.AddConsoleExporter()
+            .AddPrometheusExporter()
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = new System.Uri("http://localhost:4316");
+            }));
 
 var app = builder.Build();
+
+app.UseOpenTelemetryPrometheusScrapingEndpoint(context => context.Request.Path == "/internal/metrics" && context.Connection.LocalPort == 5067);
+
+//app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -54,8 +66,8 @@ app.Run();
 public static class DiagnosticsConfig
 {
     public const string ServiceName = "MyService";
-    public static ActivitySource ActivitySource = new(ServiceName);    
+    public static ActivitySource ActivitySource = new(ServiceName);
     public static Meter Meter = new(ServiceName);
     public static Counter<long> RequestCounter =
-        Meter.CreateCounter<long>("app.request_counter");    
+        Meter.CreateCounter<long>("app.request_counter");
 }
