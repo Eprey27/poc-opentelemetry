@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+using System.Diagnostics.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,14 +11,17 @@ builder.Services.AddControllersWithViews();
 
 // Add OpenTelemetry
 builder.Services.AddOpenTelemetry()
-    .WithTracing(tracerProviderBuilder =>
-        tracerProviderBuilder
+    .WithTracing(tracerProviderBuilder => tracerProviderBuilder
             .AddSource(DiagnosticsConfig.ActivitySource.Name)
-            .ConfigureResource(resource => resource
-                .AddService(DiagnosticsConfig.ServiceName))
+            .ConfigureResource(resource => resource.AddService(DiagnosticsConfig.ServiceName))
+            .AddAspNetCoreInstrumentation()
+            .AddConsoleExporter())
+    .WithMetrics(metricsProviderBuilder => metricsProviderBuilder
+            .AddMeter(DiagnosticsConfig.Meter.Name)
+            .ConfigureResource(resource => resource.AddService(DiagnosticsConfig.ServiceName))
             .AddAspNetCoreInstrumentation()
             .AddConsoleExporter());
- 
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -43,5 +48,8 @@ app.Run();
 public static class DiagnosticsConfig
 {
     public const string ServiceName = "MyService";
-    public static ActivitySource ActivitySource = new(ServiceName);
-}     
+    public static ActivitySource ActivitySource = new(ServiceName);    
+    public static Meter Meter = new(ServiceName);
+    public static Counter<long> RequestCounter =
+        Meter.CreateCounter<long>("app.request_counter");    
+}

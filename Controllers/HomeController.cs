@@ -20,7 +20,12 @@ public class HomeController : Controller
         activity?.SetTag("foo", 1);
         activity?.SetTag("bar", "Hello, World!");
         activity?.SetTag("baz", new int[] { 1, 2, 3 });
-        
+
+        DiagnosticsConfig.RequestCounter.Add(
+            1, 
+            new("Action", nameof(Index)), 
+            new("Controller", nameof(HomeController)));
+
         return View();
     }
 
